@@ -1,0 +1,55 @@
+#!/bin/sh
+
+/bin/mount -n -t proc   none    /proc
+/bin/mount -n -t sysfs  none    /sys
+/bin/mount -n -t tmpfs  mdev    /dev/
+
+# Basic /dev content, we need it as fast as possible.
+[ ! -e /dev/console ]  && mknod /dev/console c 5 1
+[ ! -e /dev/null ]     && mknod /dev/null c 1 3
+[ ! -e /dev/tty ]      && mknod /dev/tty c 5 0
+[ ! -e /dev/urandom ]  && mknod /dev/urandom c 1 9
+[ ! -e /dev/random ]   && mknod /dev/random c 1 8
+[ ! -e /dev/zero ]     && mknod /dev/zero c 1 5
+
+# Clean input/output
+# exec >${CONSOLE} <${CONSOLE} 2>&1
+
+if [ "$$" != '1' ]
+then
+	echo '/linuxrc has to be run as the init process as the one'
+	echo 'with a PID of 1. Try adding init="/linuxrc" to the'
+	echo 'kernel command line or running "exec /linuxrc".'
+	exit 1
+fi
+
+# mount -t proc -o noexec,nosuid,nodev proc /proc >/dev/null 2>&1
+mount -o remount,rw / >/dev/null 2>&1
+
+# Prevent superfluous printks from being printed to the console
+echo 1 > /proc/sys/kernel/printk
+
+if [ ! -s /etc/ld.so.cache ]
+then
+	# Looks like we were unable to run ldconfig during initramfs generation
+	[ -x /sbin/ldconfig ] && /sbin/ldconfig
+fi
+
+# Set up symlinks
+/bin/busybox --install -s
+
+/sbin/mdev -s
+
+/bin/mkdir -v /dev/shm
+/bin/mkdir -v /dev/pts
+/bin/mount -n -t devpts -o gid=4,mode=620 none /dev/pts
+/bin/mount -n -vt tmpfs none /dev/shm
+
+kernel_ver="$(uname -r)"
+
+if [ "$0" = '/init' ]
+then
+	[ -e /linuxrc ] && rm /linuxrc
+fi
+
+exec /bin/busybox init
