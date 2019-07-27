@@ -1,0 +1,15 @@
+::sysinit:/bin/touch /var/log/messages
+::sysinit:/bin/touch /var/log/lastlog
+
+::respawn:/sbin/getty -n -L -l /loginroot 115200 ttyS0 vt100
+::respawn:/sbin/syslogd -n -m 0
+::respawn:/sbin/klogd -n
+
+::ctrlaltdel:/sbin/reboot
+
+::shutdown:/bin/sync
+::shutdown:/usr/bin/killall klogd
+::shutdown:/usr/bin/killall syslogd
+::shutdown:/bin/umount -a -r
+
+::restart:/sbin/init
