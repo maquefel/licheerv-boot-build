@@ -105,9 +105,6 @@ ${SYSROOT}/init:	scripts/init | ${SYSROOT}
 ${SYSROOT}/loginroot:	scripts/loginroot | ${SYSROOT}
 	install -m 755 $< $@
 
-distclean::
-	rm -rf ${SYSROOT}
-
 # --- busybox
 
 build-busybox:
@@ -131,10 +128,16 @@ ${SYSROOT}/bin/busybox:	build-busybox/busybox | populate-dirs
 .install-busybox : ${SYSROOT}/bin/busybox
 
 clean::
-	make -C build-busybox ARCH=${TARGET_ARCH} clean
+	-make -C build-busybox ARCH=${TARGET_ARCH} clean
 
 distclean::
 	rm -rf build-busybox
 
 initramfs.cpio.xz: ${SYSROOT}/bin/busybox ${SYSROOT}/loginroot ${SYSROOT}/init ${SYSROOT}/etc/inittab ${SYSROOT}/etc/group ${SYSROOT}/etc/passwd
 	(cd ${SYSROOT} && find . -print0 | cpio --null -ov --format=newc | xz -C crc32 > ../initramfs.cpio.xz)
+
+clean::
+	-rm -rf initramfs.cpio.xz
+
+distclean::
+	rm -rf ${SYSROOT}
