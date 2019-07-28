@@ -45,7 +45,7 @@ fi
 /bin/mount -n -t devpts -o gid=4,mode=620 none /dev/pts
 /bin/mount -n -vt tmpfs none /dev/shm
 
-kernel_ver="$(uname -r)"
+/bin/mount -t debugfs none /sys/kernel/debug/
 
 if [ "$0" = '/init' ]
 then
