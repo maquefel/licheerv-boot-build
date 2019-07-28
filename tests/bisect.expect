@@ -1,0 +1,31 @@
+#!/usr/bin/expect -f
+
+spawn qemu-system-x86_64 -cpu host -kernel build-linux/arch/x86/boot/bzImage -initrd initramfs.cpio.xz -nographic -append "nokaslr console=ttyS0 root=/dev/ram" -enable-kvm
+
+expect "bisect #"
+
+send "uname -a\r"
+expect "Linux"
+
+expect "bisect #"
+
+send "/sbin/modprobe gpio-mockup gpio_mockup_ranges=32,64 gpio_mockup_named_lines=1\r"
+
+set timeout 1
+set ret 0
+
+send "ls /sys/kernel/debug/\r"
+
+expect {
+    "gpio-mockup-event" {}
+    timeout  { puts "gpio-mockup-event not found"; exit 1 }
+}
+
+send "ls /sys/kernel/debug/gpio-mockup-event/\r"
+
+expect {
+    "gpio-mockup-A" { puts "gpio-mockup-A found" }
+    timeout  { puts "gpio-mockup-A not found"; exit 1 }
+}
+
+exit 0
