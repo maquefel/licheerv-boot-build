@@ -47,9 +47,6 @@ fi
 
 /bin/mount -t debugfs none /sys/kernel/debug/
 
-if [ "$0" = '/init' ]
-then
-	[ -e /linuxrc ] && rm /linuxrc
-fi
+export PS1="bisect # "
 
 exec /bin/busybox init
