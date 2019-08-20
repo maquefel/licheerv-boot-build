@@ -36,6 +36,7 @@ world:	${SYSROOT}/bin/busybox \
 	${SYSROOT}/init \
 	${SYSROOT}/loginroot \
 	build-linux/arch/x86_64/boot/bzImage \
+	${SYSROOT}/lib/modules \
 	initramfs.cpio.xz
 
 # --- kernel
@@ -52,12 +53,19 @@ build-linux/.config:   | build-linux/arch/x86/configs/x86_64_qemu_defconfig
 	make ARCH=${TARGET_ARCH} -C ${KERNEL_TREE} O=${CURDIR}/build-linux x86_64_qemu_defconfig
 
 build-linux/arch/x86_64/boot/bzImage: build-linux/.config
-	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH}
-	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH} INSTALL_MOD_PATH=${SYSROOT} modules_install
+	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH} V=1
+
+.PHONY: .install-modules
+
+${SYSROOT}/lib/modules:	build-linux/arch/x86_64/boot/bzImage
+	make ${PARALLEL} -C build-linux INSTALL_MOD_PATH=${SYSROOT} modules_install
+
+.install-modules: ${SYSROOT}/lib/modules ${SYSROOT}/.mount-stamp
 
 clean::
 	-make ${PARALLEL} -C build-linux clean
 	-make ${PARALLEL} -C ${KERNEL_TREE} mrproper
+	-rm -rf ${SYSROOT}/lib/modules
 
 distclean::
 	-rm -rf build-linux
@@ -133,7 +141,7 @@ clean::
 distclean::
 	rm -rf build-busybox
 
-initramfs.cpio.xz: ${SYSROOT}/bin/busybox ${SYSROOT}/loginroot ${SYSROOT}/init ${SYSROOT}/etc/inittab ${SYSROOT}/etc/group ${SYSROOT}/etc/passwd
+initramfs.cpio.xz: ${SYSROOT}/bin/busybox ${SYSROOT}/loginroot ${SYSROOT}/init ${SYSROOT}/etc/inittab ${SYSROOT}/etc/group ${SYSROOT}/etc/passwd .install-modules
 	(cd ${SYSROOT} && find . -print0 | cpio --null -ov --format=newc | xz -C crc32 > ../initramfs.cpio.xz)
 
 clean::
