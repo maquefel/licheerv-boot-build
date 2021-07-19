@@ -1,9 +1,37 @@
-# QEMU ARM template for cortex-a9
+# HiFive Unmatched сборка бутов
 
-Unpack toolchain to toolchain directory:
+## Сборка
 
-https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-arm-none-linux-gnueabihf.tar.xz?revision=d0b90559-3960-4e4b-9297-7ddbc3e52783&la=en&hash=985078B758BC782BC338DB947347107FBCF8EF6B
+$ git submodule update --init --recursive
+$ make kernel
 
-tools/qemu-arm-virt.sh -t nfs -s 192.168.1.110 -r /exports/rootfs/ -k build-linux/arch/arm/boot/zImage
+Результирующие файлы:
 
-qemu-system-arm -M vexpress-a9 -m 512M -kernel build-linux/arch/arm/boot/zImage -dtb build-linux/arch/arm/boot/dts/vexpress-v2p-ca9.dtb -append console=ttyAMA0 -nographic -serial mon:stdio
+```
+build-linux/arch/riscv/boot/Image.gz
+build-linux/arch/riscv/boot/dts/sifive/hifive-unmatched-a00.dtb
+```
+
+## toolchain
+
+тулчейн (https://github.com/riscv/riscv-gnu-toolchain) собирается вместе с проектом, полагается что у нас RV64GC с LP64D FLOAT ABI.
+
+Можно просто положить (или подмонтировать) собранный тулчэйн на toolchain/riscv64-unknown-linux-gnu/
+
+| The SiFive 7-series core IP options are 64-bit RISC-V RV64GC, RV64IMAC
+| 
+| G - Shorthand for the IMAFDZicsr Zifencei base and extensions, intended to represent a standard general-purpose ISA
+| C - Standard Extension for Compressed Instructions
+| M - Standard Extension for Integer Multiplication and Division
+| A - Standard Extension for Atomic Instructions
+
+## Полезная ссылка по процессу загрузки HiFive Unmatched
+
+https://github.com/carlosedp/riscv-bringup
+https://github.com/carlosedp/riscv-bringup/blob/master/unmatched/Readme.md
+
+## Заметка про reboot
+
+https://forums.sifive.com/t/reboot-command/4721/7
+https://www.dialog-semiconductor.com/products/pmics?post_id=10052#tab-support_tab_content
+https://github.com/riscv/opensbi/commits/master

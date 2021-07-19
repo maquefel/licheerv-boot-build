@@ -1,6 +1,9 @@
 [submodule "linux"]
 	path = linux
-	url = git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+	url = ssh://git@b.yadro.com:7999/~n.shubin/kernel-unmatched.git
 [submodule "busybox"]
 	path = busybox
 	url = git://git.busybox.net/busybox
+[submodule "riscv-gnu-toolchain"]
+	path = riscv-gnu-toolchain
+	url = https://github.com/riscv/riscv-gnu-toolchain

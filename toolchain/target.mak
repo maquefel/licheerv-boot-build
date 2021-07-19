@@ -1,1 +1,1 @@
-targets/arm-cortex-a9.mak
+targets/riscv-sifive-unmatched.mk

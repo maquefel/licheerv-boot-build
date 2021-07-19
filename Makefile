@@ -1,5 +1,4 @@
 # -*- GNUMakefile -*-
-
 # Requirements:
 #  /bin/bash as SHELL
 
@@ -42,6 +41,17 @@ world: \
 	build-linux/arch/${TARGET_ARCH}/boot/zImage \
 	${SYSROOT}/lib/modules
 
+# --- toolchain
+riscv-gnu-toolchain/Makefile:	riscv-gnu-toolchain
+	( cd riscv-gnu-toolchain && \
+	./configure \
+	--prefix=${TOOLCHAIN_PREFIX} \
+	--with-arch=${TARGET_ARCH_AUX2} \
+	--with-abi=${TARGET_FLOAT_ABI} )
+
+${TARGET_CROSS_PREFIX}-gcc:	riscv-gnu-toolchain/Makefile
+	make ${PARALLEL} -C riscv-gnu-toolchain linux
+
 # --- kernel
 
 build-linux/arch/${TARGET_ARCH}/configs:
@@ -49,14 +59,16 @@ build-linux/arch/${TARGET_ARCH}/configs:
 
 .PHONY: kernel
 
-build-linux/arch/${TARGET_ARCH}/configs/${TARGET_ARCH}_qemu_defconfig: | build-linux/arch/${TARGET_ARCH}/configs configs/${TARGET_ARCH}_qemu_defconfig
-	cp configs/${TARGET_ARCH}_qemu_defconfig $@
+build-linux/arch/${TARGET_ARCH}/configs/hifive_unmatched_defconfig: | build-linux/arch/${TARGET_ARCH}/configs configs/hifive_unmatched_defconfig
+	cp configs/hifive_unmatched_defconfig $@
 
-build-linux/.config:   | build-linux/arch/${TARGET_ARCH}/configs/${TARGET_ARCH}_qemu_defconfig
-	make ARCH=${TARGET_ARCH} -C ${KERNEL_TREE} O=${CURDIR}/build-linux ${TARGET_ARCH}_qemu_defconfig
+build-linux/.config:   | build-linux/arch/${TARGET_ARCH}/configs/hifive_unmatched_defconfig
+	make ARCH=${TARGET_ARCH} -C ${KERNEL_TREE} O=${CURDIR}/build-linux hifive_unmatched_defconfig
 
-build-linux/arch/${TARGET_ARCH}/boot/zImage: build-linux/.config
-	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS}- V=1
+build-linux/arch/${TARGET_ARCH}/boot/Image: build-linux/.config ${TARGET_CROSS_PREFIX}-gcc
+	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- V=1
+
+kernel:	build-linux/arch/${TARGET_ARCH}/boot/Image
 
 .PHONY: .install-modules
 
