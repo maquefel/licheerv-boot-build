@@ -7,3 +7,9 @@
 [submodule "riscv-gnu-toolchain"]
 	path = riscv-gnu-toolchain
 	url = https://github.com/riscv/riscv-gnu-toolchain
+[submodule "u-boot"]
+	path = u-boot
+	url = ssh://git@b.yadro.com:7999/~n.shubin/u-boot-unmatched.git
+[submodule "opensbi"]
+	path = opensbi
+	url = ssh://git@b.yadro.com:7999/~n.shubin/opensbi-unmatched.git

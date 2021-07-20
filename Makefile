@@ -38,10 +38,12 @@ ${SYSROOT}/.mount-stamp:	| ${SYSROOT}
 .PHONY: world
 
 world: \
-	build-linux/arch/${TARGET_ARCH}/boot/zImage \
+	build-linux/arch/${TARGET_ARCH}/boot/Image \
+	u-boot/u-boot.itb \
 	${SYSROOT}/lib/modules
 
 # --- toolchain
+
 riscv-gnu-toolchain/Makefile:	riscv-gnu-toolchain
 	( cd riscv-gnu-toolchain && \
 	./configure \
@@ -51,6 +53,29 @@ riscv-gnu-toolchain/Makefile:	riscv-gnu-toolchain
 
 ${TARGET_CROSS_PREFIX}-gcc:	riscv-gnu-toolchain/Makefile
 	make ${PARALLEL} -C riscv-gnu-toolchain linux
+
+# --- opensbi
+
+opensbi/build/platform/generic/firmware/fw_dynamic.bin: opensbi ${TARGET_CROSS_PREFIX}-gcc
+	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- PLATFORM=generic
+
+.PHONY: opensbi-build
+
+opensbi-build:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
+
+# --- u-boot
+
+u-boot/.config:	u-boot opensbi/build/platform/generic/firmware/fw_dynamic.bin
+	OPENSBI=${CURDIR}/opensbi/build/platform/generic/firmware/fw_dynamic.bin \
+	make -C u-boot sifive_hifive_unmatched_fu740_defconfig
+
+u-boot/u-boot.itb:	u-boot/.config
+	OPENSBI=${CURDIR}/opensbi/build/platform/generic/firmware/fw_dynamic.bin \
+	make ${PARALLEL} -C u-boot ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS}- all
+
+.PHONY: build-uboot
+
+build-uboot:	u-boot/u-boot.itb
 
 # --- kernel
 
@@ -72,7 +97,7 @@ kernel:	build-linux/arch/${TARGET_ARCH}/boot/Image
 
 .PHONY: .install-modules
 
-${SYSROOT}/lib/modules:	build-linux/arch/${TARGET_ARCH}/boot/zImage
+${SYSROOT}/lib/modules:	build-linux/arch/${TARGET_ARCH}/boot/Image
 	make ${PARALLEL} -C build-linux INSTALL_MOD_PATH=${SYSROOT} modules_install
 
 .install-modules: ${SYSROOT}/lib/modules ${SYSROOT}/.mount-stamp
