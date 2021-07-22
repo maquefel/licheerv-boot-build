@@ -62,6 +62,11 @@ CONFIG_SPL_OPENSBI_LOAD_ADDR=0x80000000
 Используется модифицированный конфиг **sifive-hifive-unmatched-fu740** и модифицированный файл 
 **board/sifive/hifive_unmatched_fu740/spl.c**, ветка **riscv/unmatched-spl-ram**.
 
+Лучше всего использовать fork OpenOCD для RISCV:
+https://github.com/riscv/riscv-openocd
+
+С конфигом openocd/openocd-unmatched.cfg
+
 Функция для openocd:
 ```
 proc load_uboot {} {
