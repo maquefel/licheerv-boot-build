@@ -41,7 +41,12 @@ world: \
 	build-linux/arch/${TARGET_ARCH}/boot/Image \
 	opensbi/build/platform/generic/firmware/fw_dynamic.bin \
 	u-boot/u-boot.itb \
-	${SYSROOT}/lib/modules
+	${SYSROOT}/lib/modules \
+	${SYSROOT}/etc/group \
+	${SYSROOT}/etc/passwd \
+	${SYSROOT}/etc/inittab \
+	${SYSROOT}/init \
+	${SYSROOT}/loginroot
 
 # --- toolchain
 
@@ -168,3 +173,49 @@ ${TOOLCHAIN_KLIBC}/usr/lib/klibc/lib/libc.so:   klibc/usr/klibc/libc.so
 .PHONY: .build-klibc
 
 .build-klibc: ${TOOLCHAIN_KLIBC}/usr/lib/klibc/lib/libc.so
+
+# --- initramfs
+
+CREATE_DIRS := \
+	/dev \
+	/dev/pts \
+	/boot \
+	/etc \
+	/home \
+	/mnt \
+	/opt \
+	/proc \
+	/root \
+	/srv \
+	/sys \
+	/usr \
+	/var \
+	/var/log \
+	/run \
+	/tmp \
+	/lib
+
+$(patsubst %,${SYSROOT}%,${CREATE_DIRS}):	${SYSROOT}/.mount-stamp
+	install -d -m 0755 $@
+
+.PHONY: populate-dirs
+
+populate-dirs:  | $(patsubst %,${SYSROOT}%,${CREATE_DIRS})
+
+${SYSROOT}/etc/passwd:  etc/passwd ${SYSROOT}/.mount-stamp | ${SYSROOT}/etc
+	install -m 644 $< $@
+
+${SYSROOT}/etc/passwd:  etc/passwd ${SYSROOT}/.mount-stamp | ${SYSROOT}/etc
+	install -m 644 $< $@
+
+${SYSROOT}/etc/group:   etc/group ${SYSROOT}/.mount-stamp | ${SYSROOT}/etc
+	install -m 644 $< $@
+
+${SYSROOT}/etc/inittab: etc/inittab ${SYSROOT}/.mount-stamp | ${SYSROOT}/etc
+	install -m 644 $< $@
+
+${SYSROOT}/init:        scripts/init | ${SYSROOT}
+	install -m 755 $< $@
+
+${SYSROOT}/loginroot:   scripts/loginroot | ${SYSROOT}
+	install -m 755 $< $@
