@@ -39,6 +39,7 @@ ${SYSROOT}/.mount-stamp:	| ${SYSROOT}
 
 world: \
 	build-linux/arch/${TARGET_ARCH}/boot/Image \
+	opensbi/build/platform/generic/firmware/fw_dynamic.bin \
 	u-boot/u-boot.itb \
 	${SYSROOT}/lib/modules
 
@@ -57,7 +58,7 @@ ${TARGET_CROSS_PREFIX}-gcc:	riscv-gnu-toolchain/Makefile
 # --- opensbi
 
 opensbi/build/platform/generic/firmware/fw_dynamic.bin: opensbi ${TARGET_CROSS_PREFIX}-gcc
-	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- PLATFORM=generic
+	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- PLATFORM=generic FW_OPTIONS=0x2
 
 .PHONY: opensbi-build
 
@@ -65,11 +66,11 @@ opensbi-build:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
 
 # --- u-boot
 
-u-boot/.config:	u-boot opensbi/build/platform/generic/firmware/fw_dynamic.bin
+u-boot/.config:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
 	OPENSBI=${CURDIR}/opensbi/build/platform/generic/firmware/fw_dynamic.bin \
-	make -C u-boot sifive_hifive_unmatched_fu740_defconfig
+	make -C u-boot sifive_unmatched_defconfig
 
-u-boot/u-boot.itb:	u-boot/.config
+u-boot/u-boot.itb:	u-boot u-boot/.config
 	OPENSBI=${CURDIR}/opensbi/build/platform/generic/firmware/fw_dynamic.bin \
 	make ${PARALLEL} -C u-boot ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS}- all
 
@@ -82,15 +83,18 @@ build-uboot:	u-boot/u-boot.itb
 build-linux/arch/${TARGET_ARCH}/configs:
 	mkdir -p $@
 
-.PHONY: kernel
+.PHONY: kernel .build-kernel
 
 build-linux/arch/${TARGET_ARCH}/configs/hifive_unmatched_defconfig: | build-linux/arch/${TARGET_ARCH}/configs configs/hifive_unmatched_defconfig
 	cp configs/hifive_unmatched_defconfig $@
 
+.build-kernel:
+	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- V=1
+
 build-linux/.config:   | build-linux/arch/${TARGET_ARCH}/configs/hifive_unmatched_defconfig
 	make ARCH=${TARGET_ARCH} -C ${KERNEL_TREE} O=${CURDIR}/build-linux hifive_unmatched_defconfig
 
-build-linux/arch/${TARGET_ARCH}/boot/Image: build-linux/.config ${TARGET_CROSS_PREFIX}-gcc
+build-linux/arch/${TARGET_ARCH}/boot/Image: linux build-linux/.config ${TARGET_CROSS_PREFIX}-gcc
 	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- V=1
 
 kernel:	build-linux/arch/${TARGET_ARCH}/boot/Image
@@ -98,9 +102,24 @@ kernel:	build-linux/arch/${TARGET_ARCH}/boot/Image
 .PHONY: .install-modules
 
 ${SYSROOT}/lib/modules:	build-linux/arch/${TARGET_ARCH}/boot/Image
-	make ${PARALLEL} -C build-linux INSTALL_MOD_PATH=${SYSROOT} modules_install
+	make ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- ${PARALLEL} -C build-linux INSTALL_MOD_PATH=${SYSROOT} INSTALL_MOD_STRIP=1 modules_install
 
 .install-modules: ${SYSROOT}/lib/modules ${SYSROOT}/.mount-stamp
+
+# --- perf-tools
+
+build-linux/tools/perf:
+	mkdir -p $@
+
+build-linux/tools/perf/perf:  build-linux/tools/perf
+	LDFLAGS="-static" make -C linux/tools/perf/ O=build-linux/tools/perf ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}-
+
+${SYSROOT}/usr/bin/perf:      build-linux/tools/perf/perf
+	make -C linux/tools/perf/ O=build-linux/tools/perf DESTDIR=${SYSROOT} iARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- install 
+
+.PHONY: .perf-tools
+
+.perf-tools: ${SYSROOT}/usr/bin/perf
 
 clean::
 	-make ${PARALLEL} -C build-linux clean
