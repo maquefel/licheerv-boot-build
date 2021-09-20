@@ -13,3 +13,6 @@
 [submodule "opensbi"]
 	path = opensbi
 	url = ssh://git@b.yadro.com:7999/~n.shubin/opensbi-unmatched.git
+[submodule "klibc"]
+	path = klibc
+	url = git://git.kernel.org/pub/scm/libs/klibc/klibc.git

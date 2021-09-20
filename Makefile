@@ -128,3 +128,43 @@ clean::
 
 distclean::
 	-rm -rf build-linux
+
+# --- klibc
+# Author: Petr Ovchenkov <ptr@void-ptr.info>
+# copied from git://void-ptr.info/continuous-toolchain.git Makefile
+
+TARGET_ARCH_KLIBC ?= $(TARGET_ARCH_AUX)
+SYSROOT_INITRAMFS ?= ${CURDIR}/${TARGET_OS}-initramfs
+TOOLCHAIN_KLIBC   ?= ${CURDIR}/toolchain-klibc-${TARGET_CROSS}
+
+klibc/linux/include/linux/stddef.h:
+	make -C linux ARCH=${TARGET_ARCH_AUX} INSTALL_HDR_PATH=${CURDIR}/klibc/linux headers_install
+	find klibc/linux \( -name .install -o -name ..install.cmd \) -delete
+
+klibc/.config:	klibc/defconfig
+	cp $< $@
+
+klibc/usr/klibc/libc.so:	klibc/.config klibc/linux/include/linux/stddef.h
+	make -C klibc \
+	CROSS_COMPILE=${TARGET_CROSS_PREFIX}- \
+	KLIBCARCH=$(TARGET_ARCH_KLIBC) \
+	INSTALLROOT=${TOOLCHAIN_KLIBC} \
+	CPU_ARCH=${TARGET_ARCH_AUX2} \
+	CPU_TUNE=${TARGET_CPU} \
+	V=1
+
+${TOOLCHAIN_KLIBC}/usr/lib/klibc/lib/libc.so:   klibc/usr/klibc/libc.so
+	make -C klibc \
+	CROSS_COMPILE=${TARGET_CROSS_PREFIX}- \
+	KLIBCARCH=$(TARGET_ARCH_KLIBC) \
+	INSTALLROOT=${TOOLCHAIN_KLIBC} \
+	CPU_ARCH=${TARGET_ARCH_AUX2} \
+	CPU_TUNE=${TARGET_CPU} \
+	V=1 \
+	install
+	sed -i -e '/^$$prefix/ s|"|"${TOOLCHAIN_KLIBC}/|' \
+	  ${TOOLCHAIN_KLIBC}/usr/bin/klcc
+
+.PHONY: .build-klibc
+
+.build-klibc: ${TOOLCHAIN_KLIBC}/usr/lib/klibc/lib/libc.so
