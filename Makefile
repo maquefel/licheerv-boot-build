@@ -219,3 +219,31 @@ ${SYSROOT}/init:        scripts/init | ${SYSROOT}
 
 ${SYSROOT}/loginroot:   scripts/loginroot | ${SYSROOT}
 	install -m 755 $< $@
+
+# --- busybox
+
+build-busybox:
+	mkdir $@
+
+busybox/configs/unmatched_defconfig:	configs/unmatched_busybox_config
+	cp $< $@
+
+build-busybox/.config:	busybox/configs/unmatched_defconfig | build-busybox
+	make -C busybox O=../build-busybox ARCH=${TARGET_ARCH_AUX} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- unmatched_defconfig
+
+build-busybox/busybox:	build-busybox/.config
+	make -C build-busybox ${PARALLEL} ARCH=${TARGET_ARCH_AUX} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- V=1
+
+${SYSROOT}/bin/busybox:	build-busybox/busybox | populate-dirs
+	make -C build-busybox ${PARALLEL} ARCH=${TARGET_ARCH_AUX} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- CONFIG_PREFIX=${SYSROOT} install
+	rm -rf ${SYSROOT}/linuxrc
+
+.PHONY: .install-busybox
+
+.install-busybox : ${SYSROOT}/bin/busybox
+
+clean::
+	-make -C build-busybox ARCH=${TARGET_ARCH} clean
+
+distclean::
+	rm -rf build-busybox
