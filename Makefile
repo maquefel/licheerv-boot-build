@@ -65,9 +65,12 @@ ${TARGET_CROSS_PREFIX}-gcc:	riscv-gnu-toolchain/Makefile
 opensbi/build/platform/generic/firmware/fw_dynamic.bin: opensbi ${TARGET_CROSS_PREFIX}-gcc
 	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- PLATFORM=generic FW_OPTIONS=0x2
 
-.PHONY: opensbi-build
+.PHONY: opensbi-build opensbi-clean
 
 opensbi-build:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
+
+opensbi-clean:
+	-rm opensbi/build/platform/generic/firmware/fw_dynamic.bin
 
 # --- u-boot
 
