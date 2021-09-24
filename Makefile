@@ -80,7 +80,7 @@ u-boot/.config:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
 
 u-boot/u-boot.itb:	u-boot u-boot/.config
 	OPENSBI=${CURDIR}/opensbi/build/platform/generic/firmware/fw_dynamic.bin \
-	make ${PARALLEL} -C u-boot ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS}- all
+	make ${PARALLEL} -C u-boot ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS}- all V=1
 
 .PHONY: build-uboot
 
