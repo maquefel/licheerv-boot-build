@@ -250,3 +250,45 @@ clean::
 
 distclean::
 	rm -rf build-busybox
+
+# --- initramfs
+
+initramfs: ${SYSROOT}/bin/busybox ${SYSROOT}/loginroot ${SYSROOT}/init ${SYSROOT}/etc/inittab ${SYSROOT}/etc/group ${SYSROOT}/etc/passwd populate-dirs
+
+.PHONY: build-image-clean
+
+build-image:
+	mkdir -p $@
+
+build-image-clean:	initramfs/ | build-image
+	rm -rf build-image/rootfs
+	mkdir build-image/rootfs
+	(cd ${SYSROOT} && tar cf - . ) | (cd build-image/rootfs; tar xf - )
+	rm -rf build-image/rootfs/usr/{include,share/doc,share/info}
+	rm -rf build-image/rootfs/var/db/*
+	rm -rf build-image/rootfs/var/lib/*
+	rm -rf build-image/rootfs/var/log/*
+	rm -rf build-image/rootfs/var/run/*
+	rm -rf build-image/rootfs/usr/share/man
+	rm -rf build-image/rootfs/usr/local/share/man
+	rm -rf build-image/rootfs/usr/share/pkgconfig build-image/rootfs/usr/lib/pkgconfig
+	rm -rf build-image/rootfs/usr/share/locale/{el,ko,sl,be,eo,bs,nb,pt,tr,ro,uk,it,hu,sv,id,kk,es,zh_CN,da,de,vi,pt_BR,nl,en_GB,ia,sq,sr,af,ru,pl,cs,tl,dz,sk,ja,nn,he,fr,zh_TW,km,gl,fi,eu,ga,lt,hr,bg,rw,ca,et,ne}
+	rm -rf build-image/rootfs/etc/ssl/man
+	find build-image/rootfs \( -name "*.a" -o -name "*.la" -o -name "*.o" \) -exec rm -rf {} \;
+	rm -f build-image/rootfs/usr/bin/{strings,strip,ranlib,readelf,objdump,objcopy,nm,ld.gold,ld.bfd,ld}
+	rm -f build-image/rootfs/usr/bin/{gdb,gdbserver,gprof,flex++,flex,c++filt,as,ar,addr2line}
+	rm -f build-image/rootfs/usr/bin/{strace,strace-graph,strace-log-merge}
+	rm -f build-image/rootfs/bin/udevadm
+	rm -f build-image/rootfs/sbin/{udevd,udevadm}
+	rm -rf build-image/rootfs/etc/udev
+	rm -rf build-image/rootfs/lib/udev
+	find build-image/rootfs -path build-image/rootfs/lib/modules -prune -o -type f -print | while read f; do file $$f | grep -q 'ELF 32-bit MSB' && { ${TARGET_CROSS_PREFIX}-strip -s -p $$f || true; } || true; done
+
+initramfs.cpio:	build-image-clean
+	(cd build-image/rootfs && find . -print0 | cpio --null -ov --format=newc > ../../initramfs.cpio)
+
+clean::
+	-rm -rf initramfs.cpio
+
+distclean::
+	-rm -rf ${SYSROOT}
