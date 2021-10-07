@@ -292,3 +292,16 @@ clean::
 
 distclean::
 	-rm -rf ${SYSROOT}
+
+# --- qemu
+
+build-qemu:
+	mkdir -p $@
+
+build-qemu/Makefile:	qemu/configure build-qemu
+	(cd build-qemu && \
+	../qemu/configure \
+	--target-list="riscv64-softmmu")
+
+build-qemu/qemu-system-riscv64:	build-qemu/Makefile
+	make -C build-qemu ${PARALLEL}

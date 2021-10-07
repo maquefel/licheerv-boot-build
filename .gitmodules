@@ -16,3 +16,6 @@
 [submodule "klibc"]
 	path = klibc
 	url = git://git.kernel.org/pub/scm/libs/klibc/klibc.git
+[submodule "qemu"]
+	path = qemu
+	url = https://gitlab.com/qemu-project/qemu.git
