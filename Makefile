@@ -72,11 +72,17 @@ opensbi-build:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
 opensbi-clean:
 	-rm opensbi/build/platform/generic/firmware/fw_dynamic.bin
 
+opensbi/build/platform/generic/firmware/fw_payload.elf:	opensbi ${TARGET_CROSS_PREFIX}-gcc build-linux/arch/${TARGET_ARCH}/boot/Image
+	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- \
+	PLATFORM=generic FW_OPTIONS=0x2 \
+	FW_PAYLOAD_PATH=build-linux/arch/${TARGET_ARCH}/boot/Image
+
 # --- u-boot
 
-u-boot/.config:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
-	OPENSBI=${CURDIR}/opensbi/build/platform/generic/firmware/fw_dynamic.bin \
-	make -C u-boot sifive_unmatched_defconfig
+u-boot/.config:	configs/u-boot-defconfig configs/u-boot-env opensbi/build/platform/generic/firmware/fw_dynamic.bin
+	cp configs/u-boot-defconfig $@
+	make -C u-boot olddefconfig
+	sed -i 's|^CONFIG_DEFAULT_ENV_FILE=.*|CONFIG_DEFAULT_ENV_FILE="../configs/u-boot-env"|g' $@
 
 u-boot/u-boot.itb:	u-boot u-boot/.config
 	OPENSBI=${CURDIR}/opensbi/build/platform/generic/firmware/fw_dynamic.bin \

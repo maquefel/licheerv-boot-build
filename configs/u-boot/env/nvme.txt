@@ -1,0 +1,19 @@
+baudrate=115200
+kernel_addr_r=0x84000000
+kernel_comp_addr_r=0x90000000
+kernel_comp_size=0x4000000
+fdtfile=hifive-unmatched-a00.dtb
+kernelfile=Image.gz
+boot_targets=nvme0
+bootcmd_nvme0=devnum=0; run nvme_boot
+bootdelay=2
+boot_pci_enum=pci enum
+nvme_init=if ${nvme_need_init}; then setenv nvme_need_init false; nvme scan; fi
+nvme_boot=run boot_pci_enum; run nvme_init; if nvme dev ${devnum}; then devtype=nvme; ext2load nvme ${devnum} ${kernel_addr_r} ${kernelfile}; ext2load nvme ${devnum} ${fdt_addr_r} ${fdtfile}; booti ${kernel_addr_r} - ${fdt_addr_r}; fi
+stderr=serial@10010000
+stdin=serial@10010000
+stdout=serial@10010000
+ethaddr=70:b3:d5:92:f7:63
+fdt_addr_r=0x88000000
+bootargs=root=/dev/nvme0n1p3 rw console=ttySIF0,115200 earlycon nokaslr
+bootcmd=run bootcmd_nvme0
