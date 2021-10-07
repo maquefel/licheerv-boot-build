@@ -234,7 +234,7 @@ ${SYSROOT}/loginroot:   scripts/loginroot | ${SYSROOT}
 build-busybox:
 	mkdir $@
 
-busybox/configs/unmatched_defconfig:	configs/unmatched_busybox_config
+busybox/configs/unmatched_defconfig:	configs/busybox/unmatched_busybox_config
 	cp $< $@
 
 build-busybox/.config:	busybox/configs/unmatched_defconfig | build-busybox
