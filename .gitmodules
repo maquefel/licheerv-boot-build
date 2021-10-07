@@ -1,6 +1,6 @@
 [submodule "linux"]
 	path = linux
-	url = ssh://git@b.yadro.com:7999/~n.shubin/kernel-unmatched.git
+	url = https://github.com/YADRO-KNS/linux.git
 [submodule "busybox"]
 	path = busybox
 	url = git://git.busybox.net/busybox
@@ -12,10 +12,11 @@
 	url = ssh://git@b.yadro.com:7999/~n.shubin/u-boot-unmatched.git
 [submodule "opensbi"]
 	path = opensbi
-	url = ssh://git@b.yadro.com:7999/~n.shubin/opensbi-unmatched.git
+	url = https://github.com/YADRO-KNS/opensbi.git
 [submodule "klibc"]
 	path = klibc
 	url = git://git.kernel.org/pub/scm/libs/klibc/klibc.git
 [submodule "qemu"]
 	path = qemu
-	url = https://gitlab.com/qemu-project/qemu.git
+	url = ssh://git@b.yadro.com:7999/~n.shubin/qemu.git
+	#url = https://gitlab.com/qemu-project/qemu.git
