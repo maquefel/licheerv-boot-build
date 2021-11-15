@@ -70,7 +70,7 @@ opensbi/build/platform/generic/firmware/fw_dynamic.bin: opensbi ${TARGET_CROSS_P
 opensbi-build:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
 
 opensbi-clean:
-	-rm opensbi/build/platform/generic/firmware/fw_dynamic.bin
+	make -C opensbi clean
 
 opensbi/build/platform/generic/firmware/fw_payload.elf:	opensbi ${TARGET_CROSS_PREFIX}-gcc build-linux/arch/${TARGET_ARCH}/boot/Image
 	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- \
