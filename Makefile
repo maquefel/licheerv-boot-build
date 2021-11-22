@@ -307,7 +307,8 @@ build-qemu:
 build-qemu/Makefile:	qemu/configure build-qemu
 	(cd build-qemu && \
 	../qemu/configure \
-	--target-list="riscv64-softmmu")
+	--target-list="riscv64-softmmu" \
+	--disable-rdma)
 
 build-qemu/qemu-system-riscv64:	build-qemu/Makefile
 	make -C build-qemu ${PARALLEL}
