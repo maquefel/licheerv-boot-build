@@ -9,7 +9,7 @@
 	url = https://github.com/riscv/riscv-gnu-toolchain
 [submodule "u-boot"]
 	path = u-boot
-	url = ssh://git@b.yadro.com:7999/~n.shubin/u-boot-unmatched.git
+	url = https://github.com/YADRO-KNS/u-boot.git
 [submodule "opensbi"]
 	path = opensbi
 	url = https://github.com/YADRO-KNS/opensbi.git
@@ -18,5 +18,5 @@
 	url = git://git.kernel.org/pub/scm/libs/klibc/klibc.git
 [submodule "qemu"]
 	path = qemu
-	url = ssh://git@b.yadro.com:7999/~n.shubin/qemu.git
+	url = https://github.com/maquefel/qemu.git
 	#url = https://gitlab.com/qemu-project/qemu.git
