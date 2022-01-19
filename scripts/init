@@ -47,6 +47,6 @@ fi
 
 /bin/mount -t debugfs none /sys/kernel/debug/
 
-export PS1="bisect # "
+export PS1="licheerv # "
 
 exec /bin/busybox init

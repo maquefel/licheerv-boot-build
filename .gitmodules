@@ -1,6 +1,6 @@
 [submodule "linux"]
 	path = linux
-	url = https://github.com/YADRO-KNS/linux.git
+	url = https://github.com/smaeul/linux
 [submodule "busybox"]
 	path = busybox
 	url = git://git.busybox.net/busybox
@@ -9,14 +9,13 @@
 	url = https://github.com/riscv/riscv-gnu-toolchain
 [submodule "u-boot"]
 	path = u-boot
-	url = https://github.com/YADRO-KNS/u-boot.git
+	url = https://github.com/maquefel/u-boot.git
 [submodule "opensbi"]
 	path = opensbi
-	url = https://github.com/YADRO-KNS/opensbi.git
-[submodule "klibc"]
-	path = klibc
-	url = git://git.kernel.org/pub/scm/libs/klibc/klibc.git
-[submodule "qemu"]
-	path = qemu
-	url = https://github.com/maquefel/qemu.git
-	#url = https://gitlab.com/qemu-project/qemu.git
+	url = https://github.com/smaeul/opensbi
+[submodule "sun20i_d1_spl"]
+	path = sun20i_d1_spl
+	url = https://github.com/smaeul/sun20i_d1_spl
+[submodule "xfel"]
+	path = xfel
+	url = https://github.com/xboot/xfel

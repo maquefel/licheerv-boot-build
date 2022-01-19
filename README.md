@@ -1,118 +1,104 @@
-# HiFive Unmatched сборка бутов
+# Sipeed LicheeRV - Nezha CM C906 building boots
 
-## Сборка
+Alternate to official instruction small BSP building.
 
-$ git submodule update --init --recursive
-$ make kernel
+The current official guide seems very uncomfortable : 
 
-Результирующие файлы:
+- some software PhoenixCard (Windows) is need and it works crappy
+- minimum size for sdcard is 16G
+- large SDK >10G which is required to download from mega
 
-```
-build-linux/arch/riscv/boot/Image.gz
-build-linux/arch/riscv/boot/dts/sifive/hifive-unmatched-a00.dtb
-```
+so we ended up with alternate one.
 
-## toolchain
+Thanks to Samuel Holland <samuel@sholland.org> to make this thing easy.
 
-тулчейн (https://github.com/riscv/riscv-gnu-toolchain) собирается вместе с проектом, полагается что у нас RV64GC с LP64D FLOAT ABI.
+## Contents
 
-Можно просто положить (или подмонтировать) собранный тулчэйн на toolchain/riscv64-unknown-linux-gnu/
+- boot0 : zsbl (zero stage boot loader) that is used instead of u-boot SPL temporary
+- opensbi : mostly mainline with small changes for Allwinner D1
+- u-boot : very hacked but really better than official one
+- linux : a solid work on the top of v5.15 (almost the most recent)
+- riscv-gnu-toolchain : linux toolchain (currently used, can be replaced with Xuantie toolchain)
 
-| The SiFive 7-series core IP options are 64-bit RISC-V RV64GC, RV64IMAC
-| 
-| G - Shorthand for the IMAFDZicsr Zifencei base and extensions, intended to represent a standard general-purpose ISA
-| C - Standard Extension for Compressed Instructions
-| M - Standard Extension for Integer Multiplication and Division
-| A - Standard Extension for Atomic Instructions
+I've disabled emac and spi-nand in separate dts currently, they are no harm but still useless for 
+LicheeRV RV Dock and pure LicheeRV, for 86 Panel a modification is also required, so we use
+sun20i-d1-nezha-lichee.dts instead of sun20i-d1-nezha.dts for now.
 
-## Полезная ссылка по процессу загрузки HiFive Unmatched
+## Build
 
-https://github.com/carlosedp/riscv-bringup
-https://github.com/carlosedp/riscv-bringup/blob/master/unmatched/Readme.md
-
-## Заметка про reboot
-
-https://forums.sifive.com/t/reboot-command/4721/7
-https://www.dialog-semiconductor.com/products/pmics?post_id=10052#tab-support_tab_content
-https://github.com/riscv/opensbi/commits/master
-https://dpaste.com/AAS5ZTN8W
-
-## u-boot hijack
-
-- PROM на ядре с нулевым mhartid инициализирует переферийные делители осциллятора
-- PROM сканирует GPT партиции и ищет GUID 5B193300-FC78-40CD-8002-E86C45580B47
-- PROM загружает U-Boot SPL в L2 LIM (scratchpad TCM L2) в начало 0x08000000
-- U-Boot SPL помимо прочего инициализирует DDR и загружает u-boot.bin в 0x80200000, 
-  opensbi в 0x80000000
+Fetch all submodules:
 
 ```
-CONFIG_SPL_TEXT_BASE=0x08000000
-CONFIG_SPL_LOAD_FIT_ADDRESS=0x84000000
-CONFIG_SYS_TEXT_BASE=0x80200000
-CONFIG_SPL_OPENSBI_LOAD_ADDR=0x80000000
-```
-Интересный момент, что в оригинальном конфиге Unmatched фигурирует **CONFIG_SPL_LOAD_FIT_ADDRESS**,
-хотя данный адрес используется только при загрузке **spl_ram**.
-
-Дальнейшее нас пока не интересует. Из всего выше перечисленного можно сделать вывод, что возможна подмена 
-образа U-Boot SPL и U-Boot, мы можем перехватить исполнение по адресу **CONFIG_SPL_TEXT_BASE**, 
-загрузить свой U-Boot SPL, позволить U-Boot SPL произвести всю необходимую инициализацию и перехватить 
-доступ по адресу **CONFIG_SPL_LOAD_FIT_ADDRESS**, загрузить по этому адресу U-Boot и продолжить исполнение.
-
-Используется модифицированный конфиг **sifive-hifive-unmatched-fu740** и модифицированный файл 
-**board/sifive/hifive_unmatched_fu740/spl.c**, ветка **riscv/unmatched-spl-ram**.
-
-Лучше всего использовать fork OpenOCD для RISCV:
-https://github.com/riscv/riscv-openocd
-
-С конфигом openocd/openocd-unmatched.cfg
-
-Функция для openocd:
-```
-proc load_uboot {} {
-        reset init
-        bp 0x08000000 0x1000 hw
-        resume
-        after 10000
-        regexp {(0x[a-fA-F0-9]*)} [reg pc] pc
-        echo "PC=$pc"
-        load_image /home/user/nshubin/u-boot-spl.bin 0x8000000 bin
-        rbp all
-        wp 0x84000000 0x1000
-        resume
-        after 5000
-        rwp 0x84000000
-        load_image /home/user/nshubin/u-boot.itb 0x84000000 bin
-        verify_image /home/user/nshubin/u-boot.itb 0x84000000 bin
-        resume
-}
+$ git submodules update --init --recursive
 ```
 
-Выхлоп:
+Bundled toochain:
 ```
-U-Boot SPL 2021.01-00053-g8afbe20524-dirty (Jul 21 2021 - 04:00:02 +0000)
-Trying to boot from RAM
-
-
-U-Boot 2021.01-00053-g8afbe20524-dirty (Jul 21 2021 - 04:00:02 +0000)
+$ make
 ```
 
-Такая схема является рабочей до тех пор пока мы не трогаем оригинальный **u-boot-spl.bin** на MMC,
-если он по каким-то причинам отсутствует или отсутствует sd-карта, поведение PROM пока остается 
-неизвестным, но вполне возможно, что можно просто загрузить **u-boot-spl.bin** и передать управление на адрес.
+### External toochain
 
-## MSEL
+Either provide TARGET_CROSS_PREFIX:
 
 ```
-> wp 0x00001000 0x4 
-> wp
-address: 0x00001000, len: 0x00000001, r/w/a: 2, value: 0x00000000, mask: 0xffffffff
-> resume
-> reg pc
-pc (/64): 0x0000000000001008 -> (Reset Vector)
-> resume
-> reg pc
-pc (/64): 0x00000000000101d8 -> (ZSBL)
+$ TARGET_CROSS_PREFIX=riscv64-unknown-linux-gnu make
 ```
 
-Should be access from U-Boot SPL somewhere but i can't see it...
+Or simply nail it down after 
+```
+ifndef TARGET_CROSS_PREFIX
+TARGET_CROSS_PREFIX = ${TOOLCHAIN_PREFIX}/bin/${TARGET_CROSS}
+endif
+
+TARGET_CROSS_PREFIX=riscv64-unknown-linux-gnu
+
+$ make
+```
+
+## Quick deploy
+
+After make we will need the following files:
+
+- sun20i_d1_spl/nboot/boot0_sdcard_sun20iw1p1.bin
+- u-boot.toc1
+- u-boot/arch/riscv/dts/sun20i-d1-nezha-lichee.dtb
+- build-linux/arch/riscv/boot/Image.gz
+- initramfs.img.gz
+
+Example of making a card (assuming card is /dev/sdd and empty) :
+
+```
+# parted /dev/sdd --script mklabel gpt
+# parted /dev/sdd --script mkpart primary ext2 40MiB 100MiB
+# parted /dev/sdd --script mkpart primary ext4 100MiB 100%
+# mkfs.ext2 /dev/sdd1 # partion with kernel, dtb, initramfs
+# mkfs.ext4 /dev/sdd2 # partition for rootfs 
+# mount /dev/sdd1 /mnt/sdcard/
+# cp build-linux/arch/riscv/boot/Image.gz /mnt/sdcard/
+# cp u-boot/arch/riscv/dts/sun20i-d1-nezha-lichee.dtb /mnt/sdcard/ # we use dtb from u-boot !
+# cp initramfs.img.gz /mnt/sdcard/
+# umount /mnt/sdcard
+# dd if=sun20i_d1_spl/nboot/boot0_sdcard_sun20iw1p1.bin of=/dev/sdd bs=8192 seek=16
+# dd if=u-boot.toc1 of=/dev/sdd bs=512 seek=32800 # large offset thats why we make first partion on 40 MiB
+```
+
+U-boot commands (i haven't put a u-boot env yet - have to decide what i really need) : 
+
+```
+> load mmc 0:1 ${kernel_addr_r} Image.gz
+> load mmc 0:1 ${ramdisk_addr_r} initramfs.img.gz
+> load mmc 0:1 ${fdt_addr_r} sun20i-d1-nezha-lichee.dtb
+> setenv bootargs "earlycon=sbi console=ttyS0,115200n8 root=/dev/ram0 rw rdinit=/init"
+> booti ${kernel_addr_r} ${ramdisk_addr_r} ${fdt_addr_r}
+```
+
+Enjoy!
+
+## Bibliography
+
+- https://linux-sunxi.org/Allwinner_Nezha - that's the first place to visit
+- https://whycan.com/t_6440.html
+- https://whycan.com/t_7711_2.html
+- https://wiki.sipeed.com/hardware/zh/lichee/RV/flash.html
+- https://github.com/T-head-Semi/riscv-aosp

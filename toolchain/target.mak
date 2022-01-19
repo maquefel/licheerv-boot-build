@@ -1,1 +1,1 @@
-targets/riscv-sifive-unmatched.mk
+targets/riscv-thead-c906.mk

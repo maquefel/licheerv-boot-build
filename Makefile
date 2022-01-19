@@ -38,15 +38,9 @@ ${SYSROOT}/.mount-stamp:	| ${SYSROOT}
 .PHONY: world
 
 world: \
-	build-linux/arch/${TARGET_ARCH}/boot/Image \
-	opensbi/build/platform/generic/firmware/fw_dynamic.bin \
-	u-boot/u-boot.itb \
-	${SYSROOT}/lib/modules \
-	${SYSROOT}/etc/group \
-	${SYSROOT}/etc/passwd \
-	${SYSROOT}/etc/inittab \
-	${SYSROOT}/init \
-	${SYSROOT}/loginroot
+	u-boot.toc1 \
+	build-linux/arch/${TARGET_ARCH}/boot/Image.gz \
+	initramfs.img.gz
 
 # --- toolchain
 
@@ -60,128 +54,87 @@ riscv-gnu-toolchain/Makefile:	riscv-gnu-toolchain
 ${TARGET_CROSS_PREFIX}-gcc:	riscv-gnu-toolchain/Makefile
 	make ${PARALLEL} -C riscv-gnu-toolchain linux
 
+.PHONY: build-toolchain
+build-toolchain:	${TARGET_CROSS_PREFIX}-gcc
+
+# --- boot0
+
+sun20i_d1_spl/nboot/boot0_sdcard_sun20iw1p1.bin:	${TARGET_CROSS_PREFIX}-gcc
+	make -C sun20i_d1_spl CROSS_COMPILE=${TARGET_CROSS_PREFIX}- p=sun20iw1p1 mmc
+
+.PHONY: .build-boot0
+
+.build-boot0:	sun20i_d1_spl/nboot/boot0_sdcard_sun20iw1p1.bin
+
 # --- opensbi
 
-opensbi/build/platform/generic/firmware/fw_dynamic.bin: opensbi ${TARGET_CROSS_PREFIX}-gcc
-	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- PLATFORM=generic FW_OPTIONS=0x2
+opensbi/build/platform/generic/firmware/fw_dynamic.bin:	opensbi	${TARGET_CROSS_PREFIX}-gcc
+	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- PLATFORM=generic FW_PIC=y FW_OPTIONS=0x2
 
-.PHONY: opensbi-build opensbi-clean
+.PHONY: .build-opensbi
 
-opensbi-build:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
+.build-opensbi:	opensbi/build/platform/generic/firmware/fw_dynamic.bin
 
-opensbi-clean:
+clean::
 	make -C opensbi clean
-
-opensbi/build/platform/generic/firmware/fw_payload.elf:	opensbi ${TARGET_CROSS_PREFIX}-gcc build-linux/arch/${TARGET_ARCH}/boot/Image
-	make -C opensbi CROSS_COMPILE=${TARGET_CROSS_PREFIX}- \
-	PLATFORM=generic FW_OPTIONS=0x2 \
-	FW_PAYLOAD_PATH=build-linux/arch/${TARGET_ARCH}/boot/Image
 
 # --- u-boot
 
-u-boot/.config:	configs/u-boot-defconfig configs/u-boot-env opensbi/build/platform/generic/firmware/fw_dynamic.bin
-	cp configs/u-boot-defconfig $@
-	make -C u-boot olddefconfig
-	sed -i 's|^CONFIG_DEFAULT_ENV_FILE=.*|CONFIG_DEFAULT_ENV_FILE="../configs/u-boot-env"|g' $@
+u-boot/.config:	u-boot
+	make -C u-boot nezha_defconfig
 
-u-boot/u-boot.itb:	u-boot u-boot/.config
-	OPENSBI=${CURDIR}/opensbi/build/platform/generic/firmware/fw_dynamic.bin \
+u-boot/u-boot-nodtb.bin:	u-boot u-boot/.config ${TARGET_CROSS_PREFIX}-gcc
 	make ${PARALLEL} -C u-boot ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS}- all V=1
 
-.PHONY: build-uboot
+.PHONY: .build-uboot
 
-build-uboot:	u-boot/u-boot.itb
+.build-uboot:	u-boot/u-boot-nodtb.bin
+
+clean::
+	make -C u-boot clean
+
+# --- TOC1
+
+u-boot.toc1:	toc1/toc1.cfg  u-boot/u-boot-nodtb.bin opensbi/build/platform/generic/firmware/fw_dynamic.bin
+	u-boot/tools/mkimage -T sunxi_toc1 -d toc1/toc1.cfg u-boot.toc1
+
+.PHONY: .build-toc1
+
+.build-toc1: u-boot.toc1
+
+clean::
+	-rm u-boot.toc1
 
 # --- kernel
 
 build-linux/arch/${TARGET_ARCH}/configs:
 	mkdir -p $@
 
-.PHONY: kernel .build-kernel
+build-linux/arch/${TARGET_ARCH}/configs/licheerv_defconfig: | build-linux/arch/${TARGET_ARCH}/configs configs/linux/licheerv_defconfig
+	cp configs/linux/licheerv_defconfig $@
 
-build-linux/arch/${TARGET_ARCH}/configs/hifive_unmatched_defconfig: | build-linux/arch/${TARGET_ARCH}/configs configs/hifive_unmatched_defconfig
-	cp configs/hifive_unmatched_defconfig $@
+build-linux/.config:	| build-linux
+	make ARCH=${TARGET_ARCH} -C ${KERNEL_TREE} O=${CURDIR}/build-linux licheerv_defconfig
 
-.build-kernel:
+build-linux/arch/${TARGET_ARCH}/boot/Image.gz:	linux build-linux/.config ${TARGET_CROSS_PREFIX}-gcc
 	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- V=1
 
-build-linux/.config:   | build-linux/arch/${TARGET_ARCH}/configs/hifive_unmatched_defconfig
-	make ARCH=${TARGET_ARCH} -C ${KERNEL_TREE} O=${CURDIR}/build-linux hifive_unmatched_defconfig
+.PHONY: .build-linux
 
-build-linux/arch/${TARGET_ARCH}/boot/Image: linux build-linux/.config ${TARGET_CROSS_PREFIX}-gcc
-	make ${PARALLEL} -C build-linux ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- V=1
-
-kernel:	build-linux/arch/${TARGET_ARCH}/boot/Image
-
-.PHONY: .install-modules
+.build-linux:	build-linux/arch/${TARGET_ARCH}/boot/Image.gz
 
 ${SYSROOT}/lib/modules:	build-linux/arch/${TARGET_ARCH}/boot/Image
 	make ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- ${PARALLEL} -C build-linux INSTALL_MOD_PATH=${SYSROOT} INSTALL_MOD_STRIP=1 modules_install
 
+.PHONY: .install-modules
+
 .install-modules: ${SYSROOT}/lib/modules ${SYSROOT}/.mount-stamp
 
-# --- perf-tools
-
-build-linux/tools/perf:
-	mkdir -p $@
-
-build-linux/tools/perf/perf:  build-linux/tools/perf
-	LDFLAGS="-static" make -C linux/tools/perf/ O=build-linux/tools/perf ARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}-
-
-${SYSROOT}/usr/bin/perf:      build-linux/tools/perf/perf
-	make -C linux/tools/perf/ O=build-linux/tools/perf DESTDIR=${SYSROOT} iARCH=${TARGET_ARCH} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- install 
-
-.PHONY: .perf-tools
-
-.perf-tools: ${SYSROOT}/usr/bin/perf
-
 clean::
-	-make ${PARALLEL} -C build-linux clean
-	-make ${PARALLEL} -C ${KERNEL_TREE} mrproper
-	-rm -rf ${SYSROOT}/lib/modules
+	make -C build-linux clean
 
 distclean::
-	-rm -rf build-linux
-
-# --- klibc
-# Author: Petr Ovchenkov <ptr@void-ptr.info>
-# copied from git://void-ptr.info/continuous-toolchain.git Makefile
-
-TARGET_ARCH_KLIBC ?= $(TARGET_ARCH_AUX)
-SYSROOT_INITRAMFS ?= ${CURDIR}/${TARGET_OS}-initramfs
-TOOLCHAIN_KLIBC   ?= ${CURDIR}/toolchain-klibc-${TARGET_CROSS}
-
-klibc/linux/include/linux/stddef.h:
-	make -C linux ARCH=${TARGET_ARCH_AUX} INSTALL_HDR_PATH=${CURDIR}/klibc/linux headers_install
-	find klibc/linux \( -name .install -o -name ..install.cmd \) -delete
-
-klibc/.config:	klibc/defconfig
-	cp $< $@
-
-klibc/usr/klibc/libc.so:	klibc/.config klibc/linux/include/linux/stddef.h
-	make -C klibc \
-	CROSS_COMPILE=${TARGET_CROSS_PREFIX}- \
-	KLIBCARCH=$(TARGET_ARCH_KLIBC) \
-	INSTALLROOT=${TOOLCHAIN_KLIBC} \
-	CPU_ARCH=${TARGET_ARCH_AUX2} \
-	CPU_TUNE=${TARGET_CPU} \
-	V=1
-
-${TOOLCHAIN_KLIBC}/usr/lib/klibc/lib/libc.so:   klibc/usr/klibc/libc.so
-	make -C klibc \
-	CROSS_COMPILE=${TARGET_CROSS_PREFIX}- \
-	KLIBCARCH=$(TARGET_ARCH_KLIBC) \
-	INSTALLROOT=${TOOLCHAIN_KLIBC} \
-	CPU_ARCH=${TARGET_ARCH_AUX2} \
-	CPU_TUNE=${TARGET_CPU} \
-	V=1 \
-	install
-	sed -i -e '/^$$prefix/ s|"|"${TOOLCHAIN_KLIBC}/|' \
-	  ${TOOLCHAIN_KLIBC}/usr/bin/klcc
-
-.PHONY: .build-klibc
-
-.build-klibc: ${TOOLCHAIN_KLIBC}/usr/lib/klibc/lib/libc.so
+	rm -rf build-linux
 
 # --- initramfs
 
@@ -232,16 +185,16 @@ ${SYSROOT}/loginroot:   scripts/loginroot | ${SYSROOT}
 # --- busybox
 
 build-busybox:
-	mkdir $@
+	mkdir -p $@
 
-busybox/configs/unmatched_defconfig:	configs/busybox/unmatched_busybox_config
+busybox/configs/licheerv_defconfig:	configs/busybox/licheerv_busybox_config
 	cp $< $@
 
-build-busybox/.config:	busybox/configs/unmatched_defconfig | build-busybox
-	make -C busybox O=../build-busybox ARCH=${TARGET_ARCH_AUX} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- unmatched_defconfig
+build-busybox/.config:	busybox/configs/licheerv_defconfig | build-busybox
+	make -C busybox O=../build-busybox licheerv_defconfig
 
-build-busybox/busybox:	build-busybox/.config
-	make -C build-busybox ${PARALLEL} ARCH=${TARGET_ARCH_AUX} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- V=1
+build-busybox/busybox:	build-busybox/.config ${TARGET_CROSS_PREFIX}-gcc
+	LDFLAGS="-static" make -C build-busybox ${PARALLEL} ARCH=${TARGET_ARCH_AUX} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- V=1
 
 ${SYSROOT}/bin/busybox:	build-busybox/busybox | populate-dirs
 	make -C build-busybox ${PARALLEL} ARCH=${TARGET_ARCH_AUX} CROSS_COMPILE=${TARGET_CROSS_PREFIX}- CONFIG_PREFIX=${SYSROOT} install
@@ -266,7 +219,7 @@ initramfs: ${SYSROOT}/bin/busybox ${SYSROOT}/loginroot ${SYSROOT}/init ${SYSROOT
 build-image:
 	mkdir -p $@
 
-build-image-clean:	initramfs/ | build-image
+build-image-clean:	initramfs | build-image
 	rm -rf build-image/rootfs
 	mkdir build-image/rootfs
 	(cd ${SYSROOT} && tar cf - . ) | (cd build-image/rootfs; tar xf - )
@@ -299,16 +252,10 @@ clean::
 distclean::
 	-rm -rf ${SYSROOT}
 
-# --- qemu
+# --- initramfs.img.gz
 
-build-qemu:
-	mkdir -p $@
+initramfs.img.gz:	initramfs.cpio u-boot/u-boot.itb
+	u-boot/tools/mkimage -A riscv -O linux -T ramdisk -C gzip -d initramfs.cpio $@
 
-build-qemu/Makefile:	qemu/configure build-qemu
-	(cd build-qemu && \
-	../qemu/configure \
-	--target-list="riscv64-softmmu" \
-	--disable-rdma)
-
-build-qemu/qemu-system-riscv64:	build-qemu/Makefile
-	make -C build-qemu ${PARALLEL}
+clean::
+	-rm initramfs.img.gz
