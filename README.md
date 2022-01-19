@@ -29,7 +29,7 @@ sun20i-d1-nezha-lichee.dts instead of sun20i-d1-nezha.dts for now.
 Fetch all submodules:
 
 ```
-$ git submodules update --init --recursive
+$ git submodule update --init --recursive
 ```
 
 Bundled toochain:
