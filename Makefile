@@ -45,7 +45,8 @@ ${SYSROOT}/.mount-stamp:	| ${SYSROOT}
 world: \
 	u-boot.toc1 \
 	build-linux/arch/${TARGET_ARCH}/boot/Image.gz \
-	initramfs.img.gz
+	initramfs.img.gz \
+	sun20i_d1_spl/nboot/boot0_sdcard_sun20iw1p1.bin
 
 # --- toolchain
 
