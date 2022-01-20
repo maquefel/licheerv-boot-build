@@ -16,6 +16,11 @@ endif
 
 ifndef TARGET_CROSS_PREFIX
 TARGET_CROSS_PREFIX = ${TOOLCHAIN_PREFIX}/bin/${TARGET_CROSS}
+EXTERNAL_CROSS = 0
+else
+TARGET_CROSS_PATH := $(shell dirname $$(which $${TARGET_CROSS_PREFIX}-gcc))
+TARGET_CROSS_PREFIX := ${TARGET_CROSS_PATH}/${TARGET_CROSS_PREFIX}
+EXTERNAL_CROSS = 1
 endif
 
 ifndef PARALLEL
@@ -45,13 +50,17 @@ world: \
 # --- toolchain
 
 riscv-gnu-toolchain/Makefile:	riscv-gnu-toolchain
+ifeq ("$(EXTERNAL_CROSS)", "0")
 	( cd riscv-gnu-toolchain && \
 	./configure \
 	--prefix=${TOOLCHAIN_PREFIX} \
 	--with-arch=${TARGET_ARCH_AUX2} \
 	--with-abi=${TARGET_FLOAT_ABI} )
+else
+	@touch riscv-gnu-toolchain/Makefile
+endif
 
-${TARGET_CROSS_PREFIX}-gcc:	riscv-gnu-toolchain/Makefile
+${TARGET_CROSS_PREFIX}-gcc:	| riscv-gnu-toolchain/Makefile
 	make ${PARALLEL} -C riscv-gnu-toolchain linux
 
 .PHONY: build-toolchain
@@ -113,7 +122,7 @@ build-linux/arch/${TARGET_ARCH}/configs:
 build-linux/arch/${TARGET_ARCH}/configs/licheerv_defconfig: | build-linux/arch/${TARGET_ARCH}/configs configs/linux/licheerv_defconfig
 	cp configs/linux/licheerv_defconfig $@
 
-build-linux/.config:	| build-linux
+build-linux/.config:	build-linux/arch/${TARGET_ARCH}/configs/licheerv_defconfig
 	make ARCH=${TARGET_ARCH} -C ${KERNEL_TREE} O=${CURDIR}/build-linux licheerv_defconfig
 
 build-linux/arch/${TARGET_ARCH}/boot/Image.gz:	linux build-linux/.config ${TARGET_CROSS_PREFIX}-gcc

@@ -45,13 +45,19 @@ Either provide TARGET_CROSS_PREFIX:
 $ TARGET_CROSS_PREFIX=riscv64-unknown-linux-gnu make
 ```
 
-Or simply nail it down after 
+Or simply nail it down in Makefile before `ifndef TARGET_CROSS_PREFIX`:
+
 ```
+TARGET_CROSS_PREFIX=riscv64-unknown-linux-gnu
+
 ifndef TARGET_CROSS_PREFIX
 TARGET_CROSS_PREFIX = ${TOOLCHAIN_PREFIX}/bin/${TARGET_CROSS}
+EXTERNAL_CROSS = 0
+else
+TARGET_CROSS_PATH := $(shell dirname $$(which $${TARGET_CROSS_PREFIX}-gcc))
+TARGET_CROSS_PREFIX := ${TARGET_CROSS_PATH}/${TARGET_CROSS_PREFIX}
+EXTERNAL_CROSS = 1
 endif
-
-TARGET_CROSS_PREFIX=riscv64-unknown-linux-gnu
 
 $ make
 ```
