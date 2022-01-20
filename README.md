@@ -26,6 +26,12 @@ sun20i-d1-nezha-lichee.dts instead of sun20i-d1-nezha.dts for now.
 
 ## Build
 
+Install the prerequisites for the riscv-gnu-toolchain:
+
+https://github.com/riscv-collab/riscv-gnu-toolchain/tree/f640044a947afb39c78b96fa1ba1db8aa31b1d89#prerequisites
+
+You don't have to do any other steps except the prerequisites.
+
 Fetch all submodules:
 
 ```
