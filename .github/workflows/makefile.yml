@@ -1,0 +1,22 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ riscv/licheerv ]
+  pull_request:
+    branches: [ riscv/licheerv ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Git Sumbodule Update
+      run: |
+        git submodule update --init --recursive
+      
+    - name: Make project
+      run: make
