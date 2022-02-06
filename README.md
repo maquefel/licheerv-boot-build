@@ -74,9 +74,11 @@ After make we will need the following files:
 
 - sun20i_d1_spl/nboot/boot0_sdcard_sun20iw1p1.bin
 - u-boot.toc1
-- u-boot/arch/riscv/dts/sun20i-d1-nezha-lichee.dtb
+- u-boot/arch/riscv/dts/sun20i-d1-lichee-rv-dock.dtb
 - build-linux/arch/riscv/boot/Image.gz
 - initramfs.img.gz
+
+I use dtb for Lichee RV Dock currently if you require something different edit toc1/toc1.cfg accordingly.
 
 Example of making a card (assuming card is /dev/sdd and empty) :
 
@@ -88,24 +90,40 @@ Example of making a card (assuming card is /dev/sdd and empty) :
 # mkfs.ext4 /dev/sdd2 # partition for rootfs 
 # mount /dev/sdd1 /mnt/sdcard/
 # cp build-linux/arch/riscv/boot/Image.gz /mnt/sdcard/
-# cp u-boot/arch/riscv/dts/sun20i-d1-nezha-lichee.dtb /mnt/sdcard/ # we use dtb from u-boot !
 # cp initramfs.img.gz /mnt/sdcard/
 # umount /mnt/sdcard
 # dd if=sun20i_d1_spl/nboot/boot0_sdcard_sun20iw1p1.bin of=/dev/sdd bs=8192 seek=16
 # dd if=u-boot.toc1 of=/dev/sdd bs=512 seek=32800 # large offset thats why we make first partion on 40 MiB
 ```
 
+We are not using dtb from u-boot or linux kernel, as boot0 patches dtb with DRAM size and location, so we should use dtb patched - located at **fdtcontroladdr**.
+
+## U-Boot boot commands
+
 U-boot commands (i haven't put a u-boot env yet - have to decide what i really need) : 
+
+### initramfs
 
 ```
 > load mmc 0:1 ${kernel_addr_r} Image.gz
 > load mmc 0:1 ${ramdisk_addr_r} initramfs.img.gz
-> load mmc 0:1 ${fdt_addr_r} sun20i-d1-nezha-lichee.dtb
 > setenv bootargs "earlycon=sbi console=ttyS0,115200n8 root=/dev/ram0 rw rdinit=/init"
-> booti ${kernel_addr_r} ${ramdisk_addr_r} ${fdt_addr_r}
+> booti ${kernel_addr_r} ${ramdisk_addr_r} ${fdtcontroladdr}
+```
+
+### rootfs placed on mmc second partion
+
+```
+> load mmc 0:1 ${kernel_addr_r} Image.gz
+> setenv bootargs "earlycon=sbi console=ttyS0,115200n8 root=/dev/mmcblk0p2"
+> booti ${kernel_addr_r} - ${fdtcontroladdr}
 ```
 
 Enjoy!
+
+## Sunxi maillist
+
+- https://groups.google.com/g/linux-sunxi
 
 ## Bibliography
 
@@ -114,3 +132,5 @@ Enjoy!
 - https://whycan.com/t_7711_2.html
 - https://wiki.sipeed.com/hardware/zh/lichee/RV/flash.html
 - https://github.com/T-head-Semi/riscv-aosp
+- https://fedoraproject.org/wiki/Architectures/RISC-V/Allwinner
+- https://linux-sunxi.org/Sipeed_Lichee_RV
