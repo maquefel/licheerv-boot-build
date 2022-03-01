@@ -32,6 +32,11 @@ https://github.com/riscv-collab/riscv-gnu-toolchain/tree/f640044a947afb39c78b96f
 
 You don't have to do any other steps except the prerequisites.
 
+Install additional prerequisites (may be required for fresh Ubuntu installation, thanks to Alexander Fomichev for sharing this):
+```
+apt install python3-distutils swig python3-dev libssl-dev python3-pkg-resources cpio
+```
+
 Fetch all submodules:
 
 ```
